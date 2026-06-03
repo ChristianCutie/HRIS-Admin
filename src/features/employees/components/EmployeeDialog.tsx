@@ -225,6 +225,8 @@ const EmployeeDialog = ({
         base_pay: '',
         night_hours: '',
         hire_date: '',
+        shift_start: '',
+        shift_end: '',
 
         // Status
         is_active: true,
@@ -388,6 +390,8 @@ const EmployeeDialog = ({
                 base_pay: editingEmployee.base_pay?.toString() || '',
                 night_hours: editingEmployee.night_hours?.toString() || '',
                 hire_date: editingEmployee.hire_date || '',
+                shift_start: editingEmployee.shift_start || '',
+                shift_end: editingEmployee.shift_end || '',
 
                 is_active: editingEmployee.is_active ?? true,
                 is_archived: Number(editingEmployee.is_archived ?? 0),
@@ -513,6 +517,8 @@ const EmployeeDialog = ({
                 base_pay: '',
                 night_hours: '',
                 hire_date: '',
+                shift_start: '',
+                shift_end: '',
 
                 is_active: true,
                 is_archived: 0,
@@ -1488,6 +1494,24 @@ const EmployeeDialog = ({
                                                 type="date"
                                                 value={formData.hire_date}
                                                 onChange={(e) => handleInputChange('hire_date', e.target.value)}
+                                            />
+                                        </div>
+                                         <div className="space-y-2">
+                                            <Label htmlFor="shift_start">Shift Start</Label>
+                                            <Input
+                                                id="shift_start"
+                                                type="time"
+                                                value={formData.shift_start}
+                                                onChange={(e) => handleInputChange('shift_start', e.target.value)}
+                                            />
+                                        </div>
+                                          <div className="space-y-2">
+                                            <Label htmlFor="shift_end">Shift End</Label>
+                                            <Input
+                                                id="shift_end"
+                                                type="time"
+                                                value={formData.shift_end}
+                                                onChange={(e) => handleInputChange('shift_end', e.target.value)}
                                             />
                                         </div>
 

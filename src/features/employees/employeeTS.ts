@@ -175,6 +175,8 @@ export interface EmploymentInformation {
     base_salary: string | number;  //daily rate
     base_pay: string | number;
     hire_date: string;
+    shift_start: string | any;
+    shift_end: string | any;
 
     // Status
     is_active: boolean;
@@ -293,6 +295,8 @@ export interface EmployeeFormData {
     base_salary: string;
     night_rate: string;
     hire_date: string;
+    shift_start: string;
+    shift_end: string;
     role: string;
     is_active: boolean;
 
