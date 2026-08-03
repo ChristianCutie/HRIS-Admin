@@ -347,7 +347,7 @@ const ForgotClockInRequest = () => {
                     <TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          {record.status === "missed" ? (
+                          {record.status === "pending" ? (
                             <>
                               <Button
                                 variant="outline"

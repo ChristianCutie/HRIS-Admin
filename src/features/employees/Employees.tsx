@@ -243,16 +243,16 @@ const Employees = () => {
         });
     };
 
-    const formatDateTime = (dateString: string) => {
-        if (!dateString) return 'N/A';
-        return new Date(dateString).toLocaleDateString('en-PH', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
+    // const formatDateTime = (dateString: string) => {
+    //     if (!dateString) return 'N/A';
+    //     return new Date(dateString).toLocaleDateString('en-PH', {
+    //         year: 'numeric',
+    //         month: 'long',
+    //         day: 'numeric',
+    //         hour: '2-digit',
+    //         minute: '2-digit'
+    //     });
+    // };
 
     const renderField = (value: any, fallback = 'N/A') => {
         return value ? value : fallback;
@@ -1195,13 +1195,21 @@ const Employees = () => {
                                                 <p className="text-sm mt-1">{formatDate(selectedEmployee.hire_date)}</p>
                                             </div>
                                             <div>
+                                                <Label className="text-sm">Shift Start</Label>
+                                                <p className="text-sm mt-1">{formatDate(selectedEmployee.shift_start)}</p>
+                                            </div>
+                                              <div>
+                                                <Label className="text-sm">Shift End</Label>
+                                                <p className="text-sm mt-1">{formatDate(selectedEmployee.shift_end)}</p>
+                                            </div>
+                                            {/* <div>
                                                 <Label className="text-sm">Created At</Label>
                                                 <p className="text-sm mt-1">{formatDateTime(selectedEmployee.created_at)}</p>
                                             </div>
                                             <div>
                                                 <Label className="text-sm">Last Updated</Label>
                                                 <p className="text-sm mt-1">{formatDateTime(selectedEmployee.updated_at)}</p>
-                                            </div>
+                                            </div> */}
                                         </CardContent>
                                     </Card>
                                 </div>
