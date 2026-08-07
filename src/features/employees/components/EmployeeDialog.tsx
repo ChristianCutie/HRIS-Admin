@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { FileText, User, Briefcase, GraduationCap, FileCheck, AlertCircle, MapPin, PhilippinePeso, Users } from "lucide-react";
 import api from '@/utils/axios';
+import { toast } from 'sonner';
 import type { Employee, Department, PositionType, BenefitType, AllowanceType } from '../employeeTS';
 
 interface EmployeeDialogProps {
@@ -390,8 +391,8 @@ const EmployeeDialog = ({
                 base_pay: editingEmployee.base_pay?.toString() || '',
                 night_hours: editingEmployee.night_hours?.toString() || '',
                 hire_date: editingEmployee.hire_date || '',
-                shift_start: editingEmployee.shift_start || '',
-                shift_end: editingEmployee.shift_end || '',
+                shift_start: formatTimeForBackend(editingEmployee.shift_start || ''),
+                shift_end: formatTimeForBackend(editingEmployee.shift_end || ''),
 
                 is_active: editingEmployee.is_active ?? true,
                 is_archived: Number(editingEmployee.is_archived ?? 0),
@@ -547,6 +548,19 @@ const EmployeeDialog = ({
         }));
     };
 
+    // Normalize time values to `HH:MM` for backend validation
+    const formatTimeForBackend = (value: any) => {
+        if (!value && value !== 0) return '';
+        const str = value.toString();
+        const m = str.match(/(\d{1,2}):(\d{2})/);
+        if (m) {
+            const hh = m[1].padStart(2, '0');
+            const mm = m[2];
+            return `${hh}:${mm}`;
+        }
+        return str;
+    };
+
     const handleBenefitToggle = (benefitId: number, checked: boolean) => {
         setFormData(prev => {
             if (checked) {
@@ -639,8 +653,15 @@ const EmployeeDialog = ({
         try {
             const submitData = new FormData();
 
+            // Normalize time fields so backend accepts H:i format (HH:MM)
+            const processedForm = {
+                ...formData,
+                shift_start: formatTimeForBackend(formData.shift_start),
+                shift_end: formatTimeForBackend(formData.shift_end),
+            };
+
             // Append all form data except password confirmation, benefits, and allowances
-            Object.entries(formData).forEach(([key, value]) => {
+            Object.entries(processedForm).forEach(([key, value]) => {
                 if (key !== 'confirm_password' && key !== 'benefits' && key !== 'allowances' && value !== null && value !== undefined && value !== '') {
                     if (typeof value === 'boolean') {
                         submitData.append(key, value ? '1' : '0');
@@ -695,6 +716,7 @@ const EmployeeDialog = ({
                     onEmployeeUpdated();
                     setIsOpen(false);
                     setEditingEmployee(null);
+                    toast.success(response.data.message || 'Employee updated successfully');
                 } else {
                     throw new Error(response.data.message);
                 }
@@ -711,6 +733,7 @@ const EmployeeDialog = ({
                     onEmployeeAdded();
                     setIsOpen(false);
                     setEditingEmployee(null);
+                    toast.success(response.data.message || 'Employee created successfully');
                 } else {
                     throw new Error(response.data.message);
                 }
@@ -722,11 +745,16 @@ const EmployeeDialog = ({
                 const errorMessages = Object.entries(backendErrors)
                     .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
                     .join('; ');
-                setError(`Validation failed: ${errorMessages}`);
+                const msg = `Validation failed: ${errorMessages}`;
+                setError(msg);
+                toast.error(msg);
             } else if (err.response?.data?.message) {
                 setError(err.response.data.message);
+                toast.error(err.response.data.message);
             } else {
-                setError(err instanceof Error ? err.message : 'An error occurred while saving employee');
+                const msg = err instanceof Error ? err.message : 'An error occurred while saving employee';
+                setError(msg);
+                toast.error(msg);
             }
         } finally {
             setLoading(false);

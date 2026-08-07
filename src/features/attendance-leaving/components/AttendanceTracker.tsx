@@ -92,7 +92,7 @@ const AttendanceTracker = () => {
 
   // Image Preview State
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [previewTitle] = useState<string>("");
+  const [previewTitle, setPreviewTitle] = useState<string>("");
 
   const fetchAttendance = async () => {
     setLoading(true);
@@ -397,6 +397,7 @@ const AttendanceTracker = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Employee</TableHead>
+                  <TableHead>Captured Clock In/Out</TableHead>
                   <TableHead>Clock In</TableHead>
                   <TableHead>Clock Out</TableHead>
                   <TableHead>Hours Worked</TableHead>
@@ -437,6 +438,39 @@ const AttendanceTracker = () => {
                             {record.employee.email}
                           </div>
                         </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        {record.clock_in_image ? (
+                          <img
+                            src={record.clock_in_image}
+                            className="w-10 h-10 rounded object-cover cursor-pointer border"
+                            onClick={() => {
+                              setPreviewImage(record.clock_in_image!);
+                              setPreviewTitle("Clock In Image");
+                            }}
+                          />
+                        ) : (
+                          <span className="me-4 ms-4">
+                            --
+                          </span>
+                        )}
+
+                        {record.clock_out_image ? (
+                          <img
+                            src={record.clock_out_image}
+                            className="w-10 h-10 rounded object-cover cursor-pointer border"
+                            onClick={() => {
+                              setPreviewImage(record.clock_out_image!);
+                              setPreviewTitle("Clock Out Image");
+                            }}
+                          />
+                        ) : (
+                          <span>
+                            --
+                          </span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>{formatTime(record.clock_in)}</TableCell>
