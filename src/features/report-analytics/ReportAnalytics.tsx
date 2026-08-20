@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { Download, Filter, TrendingUp, Users, Clock, DollarSign } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { Download, Eye, Filter, TrendingUp, Users, Clock, DollarSign, RefreshCw, Search } from 'lucide-react';
 import { mockEmployees, mockDepartments, mockPayroll } from '../data/mockData';
+import api from '@/utils/axios';
 
 // Mock report data
 const turnoverData = [
@@ -17,14 +20,6 @@ const turnoverData = [
     { month: 'Apr', hired: 4, left: 1, rate: 4.1 },
     { month: 'May', hired: 6, left: 2, rate: 8.3 },
     { month: 'Jun', hired: 2, left: 4, rate: 16.7 },
-];
-
-const attendanceData = [
-    { department: 'Engineering', present: 95.2, absent: 4.8 },
-    { department: 'Marketing', present: 92.8, absent: 7.2 },
-    { department: 'Sales', present: 88.5, absent: 11.5 },
-    { department: 'HR', present: 96.1, absent: 3.9 },
-    { department: 'Finance', present: 94.3, absent: 5.7 },
 ];
 
 const payrollTrends = [
@@ -45,8 +40,136 @@ const complianceReports = [
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
+interface EodReport {
+    id: number;
+    status: string;
+    is_late: boolean | number;
+    clock_in?: string | null;
+    clock_out?: string | null;
+    report_today?: string | null;
+    hours_worked?: number | string | null;
+    late_minutes?: number | string | null;
+    late_deduction?: number | string | null;
+    employee?: {
+        first_name: string;
+        middle_name?: string | null;
+        last_name: string;
+        employee_id: string;
+    };
+}
+
+interface EodResponse {
+    isSuccess: boolean;
+    message?: string;
+    summary?: {
+        total_reports: number;
+        total_present: number;
+        total_late: number;
+        total_on_time: number;
+        total_hours_worked: number;
+        total_late_minutes: number;
+        total_late_deduction: number;
+    };
+    reports?: EodReport[];
+    pagination?: {
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    };
+}
+
+const emptyEodSummary = {
+    total_reports: 0,
+    total_present: 0,
+    total_late: 0,
+    total_on_time: 0,
+    total_hours_worked: 0,
+    total_late_minutes: 0,
+    total_late_deduction: 0,
+};
+
+const getToday = () => new Date().toISOString().slice(0, 10);
+
+const formatDateTime = (value?: string | null) => value ? new Date(value).toLocaleString() : '--';
+
+const REPORT_PREVIEW_MAX_LENGTH = 120;
+
+const plainTextReport = (value?: string | null) => {
+    if (!value) return '--';
+
+    const text = new DOMParser()
+        .parseFromString(value, 'text/html')
+        .body.textContent
+        ?.replace(/\s+/g, ' ')
+        .trim() || '--';
+
+    return text.length > REPORT_PREVIEW_MAX_LENGTH
+        ? `${text.slice(0, REPORT_PREVIEW_MAX_LENGTH).trimEnd()}...`
+        : text;
+};
+
+const fullPlainTextReport = (value?: string | null) => {
+    if (!value) return '--';
+
+    const reportWithLineBreaks = value
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/(?:p|div|li|h[1-6]|blockquote)>/gi, '\n');
+
+    return new DOMParser()
+        .parseFromString(reportWithLineBreaks, 'text/html')
+        .body.textContent
+        ?.replace(/[ \t]+/g, ' ')
+        .replace(/[ \t]*\n[ \t]*/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim() || '--';
+};
+
+const employeeName = (employee?: EodReport['employee']) => employee
+    ? [employee.first_name, employee.middle_name, employee.last_name].filter(Boolean).join(' ')
+    : 'Unknown employee';
+
 const ReportAnalytics = () => {
     const [selectedReport, setSelectedReport] = useState('overview');
+    const [eodReports, setEodReports] = useState<EodReport[]>([]);
+    const [eodSummary, setEodSummary] = useState(emptyEodSummary);
+    const [eodLoading, setEodLoading] = useState(false);
+    const [eodError, setEodError] = useState<string | null>(null);
+    const [eodFilters, setEodFilters] = useState({ date: getToday(), search: '', status: '', is_late: '' });
+    const [eodPage, setEodPage] = useState(1);
+    const [eodPagination, setEodPagination] = useState({ current_page: 1, last_page: 1, per_page: 20, total: 0 });
+    const [selectedEodReport, setSelectedEodReport] = useState<EodReport | null>(null);
+
+    useEffect(() => {
+        if (selectedReport !== 'attendance') return;
+
+        const fetchEodReports = async () => {
+            try {
+                setEodLoading(true);
+                setEodError(null);
+                const params = {
+                    date: eodFilters.date,
+                    page: eodPage,
+                    per_page: 20,
+                    ...(eodFilters.search && { search: eodFilters.search }),
+                    ...(eodFilters.status && { status: eodFilters.status }),
+                    ...(eodFilters.is_late && { is_late: eodFilters.is_late }),
+                };
+                const response = await api.get<EodResponse>('/dashboard/eod-reports', { params });
+
+                if (!response.data.isSuccess) throw new Error(response.data.message || 'Failed to load EOD reports.');
+                setEodReports(response.data.reports || []);
+                setEodSummary(response.data.summary || emptyEodSummary);
+                setEodPagination(response.data.pagination || { current_page: 1, last_page: 1, per_page: 20, total: 0 });
+            } catch (error) {
+                setEodError(error instanceof Error ? error.message : 'Failed to load EOD reports.');
+            } finally {
+                setEodLoading(false);
+            }
+        };
+
+        fetchEodReports();
+    }, [selectedReport, eodFilters, eodPage]);
 
     const reportTypes = [
         { value: 'overview', label: 'Overview Dashboard' },
@@ -145,7 +268,7 @@ const ReportAnalytics = () => {
                                     fill="#8884d8"
                                     dataKey="employeeCount"
                                 >
-                                    {mockDepartments.map((index: any) => (
+                                    {mockDepartments.map((_, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
@@ -162,22 +285,78 @@ const ReportAnalytics = () => {
         <div className="space-y-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>Attendance by Department</CardTitle>
-                    <CardDescription>Average attendance rates across departments</CardDescription>
+                    <CardTitle>End-of-Day Attendance Reports</CardTitle>
+                    <CardDescription>Attendance records with a clock-out and submitted daily report</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <ResponsiveContainer width="100%" height={400}>
-                        <BarChart data={attendanceData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="department" />
-                            <YAxis />
-                            <Tooltip />
-                            <Bar dataKey="present" fill="#22c55e" name="Present %" />
-                            <Bar dataKey="absent" fill="#ef4444" name="Absent %" />
-                        </BarChart>
-                    </ResponsiveContainer>
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                        <Input type="date" value={eodFilters.date} onChange={(event) => { setEodPage(1); setEodFilters({ ...eodFilters, date: event.target.value }); }} />
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input className="pl-9" placeholder="Search employee..." value={eodFilters.search} onChange={(event) => { setEodPage(1); setEodFilters({ ...eodFilters, search: event.target.value }); }} />
+                        </div>
+                        <Select value={eodFilters.status || 'all'} onValueChange={(value) => { setEodPage(1); setEodFilters({ ...eodFilters, status: value === 'all' ? '' : value }); }}>
+                            <SelectTrigger><SelectValue placeholder="All statuses" /></SelectTrigger>
+                            <SelectContent><SelectItem value="all">All statuses</SelectItem><SelectItem value="Present">Present</SelectItem><SelectItem value="Absent">Absent</SelectItem></SelectContent>
+                        </Select>
+                        <Select value={eodFilters.is_late || 'all'} onValueChange={(value) => { setEodPage(1); setEodFilters({ ...eodFilters, is_late: value === 'all' ? '' : value }); }}>
+                            <SelectTrigger><SelectValue placeholder="All attendance" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All attendance</SelectItem>
+                                <SelectItem value="1">Late</SelectItem>
+                                <SelectItem value="0">On time</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
+                        {[
+                            ['Reports', eodSummary.total_reports], ['Present', eodSummary.total_present], ['Late', eodSummary.total_late],
+                            ['On time', eodSummary.total_on_time], ['Hours', eodSummary.total_hours_worked], ['Late mins', eodSummary.total_late_minutes], ['Deduction', eodSummary.total_late_deduction],
+                        ].map(([label, value]) => <div key={label} className="rounded-md border p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="text-lg font-semibold">{typeof value === 'number' ? value.toLocaleString() : value}</p></div>)}
+                    </div>
                 </CardContent>
             </Card>
+
+            <Card>
+                <CardContent className="p-0">
+                    {eodLoading ? <div className="flex items-center justify-center gap-2 p-10 text-muted-foreground"><RefreshCw className="h-5 w-5 animate-spin" />Loading EOD reports...</div> : eodError ? <div className="p-10 text-center text-red-500">{eodError}</div> : <Table>
+                        <TableHeader><TableRow><TableHead>Employee</TableHead><TableHead>Status</TableHead><TableHead>Clock out</TableHead><TableHead>Hours</TableHead><TableHead>Late</TableHead><TableHead>Report</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                        <TableBody>{eodReports.length === 0 ? <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">No EOD reports found.</TableCell></TableRow> : eodReports.map((report) => <TableRow key={report.id}>
+                            <TableCell><div className="font-medium">{employeeName(report.employee)}</div><div className="text-xs text-muted-foreground">{report.employee?.employee_id || '--'}</div></TableCell>
+                            <TableCell><Badge variant="outline">{report.status || '--'}</Badge></TableCell><TableCell>{formatDateTime(report.clock_out)}</TableCell><TableCell>{report.hours_worked ?? '--'}</TableCell><TableCell>{report.is_late ? `${report.late_minutes ?? 0} min` : 'On time'}</TableCell><TableCell className="max-w-sm whitespace-normal">{plainTextReport(report.report_today)}</TableCell>
+                            <TableCell className="text-right"><Button variant="ghost" size="sm" onClick={() => setSelectedEodReport(report)}><Eye className="mr-2 h-4 w-4" />View details</Button></TableCell>
+                        </TableRow>)}</TableBody>
+                    </Table>}
+                </CardContent>
+                {!eodLoading && eodPagination.last_page > 1 && <CardContent className="flex items-center justify-between border-t py-3"><span className="text-sm text-muted-foreground">Page {eodPagination.current_page} of {eodPagination.last_page} ({eodPagination.total} total)</span><div className="flex gap-2"><Button variant="outline" size="sm" disabled={eodPage <= 1} onClick={() => setEodPage((page) => page - 1)}>Previous</Button><Button variant="outline" size="sm" disabled={eodPage >= eodPagination.last_page} onClick={() => setEodPage((page) => page + 1)}>Next</Button></div></CardContent>}
+            </Card>
+
+            <Dialog open={selectedEodReport !== null} onOpenChange={(open) => !open && setSelectedEodReport(null)}>
+                <DialogContent className="max-h-[calc(100vh-2rem)] overflow-hidden sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>EOD report details</DialogTitle>
+                        <DialogDescription>{selectedEodReport ? employeeName(selectedEodReport.employee) : ''}</DialogDescription>
+                    </DialogHeader>
+                    {selectedEodReport && <div className="space-y-5">
+                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                            <div><p className="text-xs text-muted-foreground">Employee ID</p><p className="font-medium">{selectedEodReport.employee?.employee_id || '--'}</p></div>
+                            <div><p className="text-xs text-muted-foreground">Status</p><p className="font-medium">{selectedEodReport.status || '--'}</p></div>
+                            <div><p className="text-xs text-muted-foreground">Clock in</p><p className="font-medium">{formatDateTime(selectedEodReport.clock_in)}</p></div>
+                            <div><p className="text-xs text-muted-foreground">Clock out</p><p className="font-medium">{formatDateTime(selectedEodReport.clock_out)}</p></div>
+                            <div><p className="text-xs text-muted-foreground">Hours worked</p><p className="font-medium">{selectedEodReport.hours_worked ?? '--'}</p></div>
+                            <div><p className="text-xs text-muted-foreground">Late minutes</p><p className="font-medium">{selectedEodReport.late_minutes ?? 0}</p></div>
+                            <div><p className="text-xs text-muted-foreground">Late deduction</p><p className="font-medium">{selectedEodReport.late_deduction ?? 0}</p></div>
+                        </div>
+                        <div>
+                            <p className="mb-2 text-xs text-muted-foreground">Report</p>
+                            <div className="max-h-[40vh] overflow-y-auto rounded-md border bg-muted/30 p-4 sm:max-h-72">
+                                <p className="whitespace-pre-wrap text-sm">{fullPlainTextReport(selectedEodReport.report_today)}</p>
+                            </div>
+                        </div>
+                    </div>}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 
@@ -337,4 +516,4 @@ const ReportAnalytics = () => {
     );
 }
 
-export default ReportAnalytics
+export default ReportAnalytics;

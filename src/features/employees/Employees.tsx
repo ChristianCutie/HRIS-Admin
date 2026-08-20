@@ -148,7 +148,7 @@ const Employees = () => {
     const fetchDropdownData = async () => {
         try {
             const [deptResponse, posResponse, mgrResponse] = await Promise.all([
-                api.get('/dropdown/departments'),
+                api.get('/departments'),
                 api.get('/dropdown/position-types'),
                 api.get('/dropdown/employees')
             ]);

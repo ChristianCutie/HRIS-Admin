@@ -8,7 +8,7 @@ export const useDepartments = () => {
         const fetchDepartments = async () => {
             try {
                 // Replace with your actual API call
-                const response = await fetch(`${BASE_URL_API}/dropdown/departments`);
+                const response = await fetch(`${BASE_URL_API}/departments`);
                 const data = await response.json();
                 setDepartments(data.data);
             } catch (error) {

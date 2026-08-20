@@ -180,7 +180,7 @@ export function CandidatePortal() {
 
     const fetchDepartments = async () => {
         try {
-            const response = await fetch(`${api}/dropdown/departments`);
+            const response = await fetch(`${api}/departments`);
             const data = await response.json();
             if (response.ok && data.isSuccess) setDepartments(data.data || []);
         } catch (err) {
@@ -190,7 +190,7 @@ export function CandidatePortal() {
 
     const fetchWorkLocations = async () => {
         try {
-            const response = await fetch(`${api}/dropdown/work-locations`);
+            const response = await fetch(`${api}/work-locations`);
             const data = await response.json();
             if (response.ok && data.isSuccess) setWorkLocations(data.data || []);
         } catch (err) {

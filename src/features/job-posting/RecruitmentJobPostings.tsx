@@ -66,7 +66,7 @@ const RecruitmentJobPostings = () => {
     // Fetch departments for dropdown
     const fetchDepartments = async () => {
         try {
-            const response = await api.get(`/dropdown/departments`);
+            const response = await api.get(`/departments`);
             if (response.data.isSuccess) {
                 setDepartments(response.data.data);
             }
