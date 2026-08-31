@@ -320,14 +320,33 @@ const ReportAnalytics = () => {
 
             <Card>
                 <CardContent className="p-0">
-                    {eodLoading ? <div className="flex items-center justify-center gap-2 p-10 text-muted-foreground"><RefreshCw className="h-5 w-5 animate-spin" />Loading EOD reports...</div> : eodError ? <div className="p-10 text-center text-red-500">{eodError}</div> : <Table>
-                        <TableHeader><TableRow><TableHead>Employee</TableHead><TableHead>Status</TableHead><TableHead>Clock out</TableHead><TableHead>Hours</TableHead><TableHead>Late</TableHead><TableHead>Report</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                        <TableBody>{eodReports.length === 0 ? <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">No EOD reports found.</TableCell></TableRow> : eodReports.map((report) => <TableRow key={report.id}>
-                            <TableCell><div className="font-medium">{employeeName(report.employee)}</div><div className="text-xs text-muted-foreground">{report.employee?.employee_id || '--'}</div></TableCell>
-                            <TableCell><Badge variant="outline">{report.status || '--'}</Badge></TableCell><TableCell>{formatDateTime(report.clock_out)}</TableCell><TableCell>{report.hours_worked ?? '--'}</TableCell><TableCell>{report.is_late ? `${report.late_minutes ?? 0} min` : 'On time'}</TableCell><TableCell className="max-w-sm whitespace-normal">{plainTextReport(report.report_today)}</TableCell>
-                            <TableCell className="text-right"><Button variant="ghost" size="sm" onClick={() => setSelectedEodReport(report)}><Eye className="mr-2 h-4 w-4" />View details</Button></TableCell>
-                        </TableRow>)}</TableBody>
-                    </Table>}
+                    {eodLoading ? <div className="flex items-center justify-center gap-2 p-10 text-muted-foreground"><RefreshCw className="h-5 w-5 animate-spin" />Loading EOD reports...</div> : eodError ? <div className="p-10 text-center text-red-500">{eodError}</div> : <>
+                        <div className="hidden md:block">
+                            <Table>
+                                <TableHeader><TableRow><TableHead>Employee</TableHead><TableHead>Status</TableHead><TableHead>Clock out</TableHead><TableHead>Hours</TableHead><TableHead>Late</TableHead><TableHead>Report</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                <TableBody>{eodReports.length === 0 ? <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">No EOD reports found.</TableCell></TableRow> : eodReports.map((report) => <TableRow key={report.id}>
+                                    <TableCell><div className="font-medium">{employeeName(report.employee)}</div><div className="text-xs text-muted-foreground">{report.employee?.employee_id || '--'}</div></TableCell>
+                                    <TableCell><Badge variant="outline">{report.status || '--'}</Badge></TableCell><TableCell>{formatDateTime(report.clock_out)}</TableCell><TableCell>{report.hours_worked ?? '--'}</TableCell><TableCell>{report.is_late ? `${report.late_minutes ?? 0} min` : 'On time'}</TableCell><TableCell className="max-w-sm whitespace-normal">{plainTextReport(report.report_today)}</TableCell>
+                                    <TableCell className="text-right"><Button variant="outline" size="sm" className="border-border" onClick={() => setSelectedEodReport(report)}><Eye className="mr-2 h-4 w-4" />View details</Button></TableCell>
+                                </TableRow>)}</TableBody>
+                            </Table>
+                        </div>
+                        <div className="divide-y md:hidden">
+                            {eodReports.length === 0 ? <div className="py-10 text-center text-muted-foreground">No EOD reports found.</div> : eodReports.map((report) => <div key={report.id} className="space-y-3 p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div><div className="font-medium">{employeeName(report.employee)}</div><div className="text-xs text-muted-foreground">{report.employee?.employee_id || '--'}</div></div>
+                                    <Badge variant="outline">{report.status || '--'}</Badge>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                    <div><p className="text-xs text-muted-foreground">Clock out</p><p>{formatDateTime(report.clock_out)}</p></div>
+                                    <div><p className="text-xs text-muted-foreground">Hours</p><p>{report.hours_worked ?? '--'}</p></div>
+                                    <div><p className="text-xs text-muted-foreground">Attendance</p><p>{report.is_late ? `${report.late_minutes ?? 0} min late` : 'On time'}</p></div>
+                                    <div><p className="text-xs text-muted-foreground">Report</p><p className="break-words">{plainTextReport(report.report_today)}</p></div>
+                                </div>
+                                <Button variant="outline" size="sm" className="w-full" onClick={() => setSelectedEodReport(report)}><Eye className="mr-2 h-4 w-4" />View details</Button>
+                            </div>)}
+                        </div>
+                    </>}
                 </CardContent>
                 {!eodLoading && eodPagination.last_page > 1 && <CardContent className="flex items-center justify-between border-t py-3"><span className="text-sm text-muted-foreground">Page {eodPagination.current_page} of {eodPagination.last_page} ({eodPagination.total} total)</span><div className="flex gap-2"><Button variant="outline" size="sm" disabled={eodPage <= 1} onClick={() => setEodPage((page) => page - 1)}>Previous</Button><Button variant="outline" size="sm" disabled={eodPage >= eodPagination.last_page} onClick={() => setEodPage((page) => page + 1)}>Next</Button></div></CardContent>}
             </Card>

@@ -8,7 +8,8 @@ interface StepIndicatorProps {
 
 export const StepIndicator: React.FC<StepIndicatorProps> = ({ currentStep, onStepClick }) => {
     return (
-        <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2 mt-6">
+        <div className="mt-6 overflow-x-auto">
+            <div className="flex min-w-[1120px] gap-2 lg:min-w-0">
             {setupSteps.map((step, index) => {
                 const StepIcon = step.icon;
                 const isCurrent = index === currentStep;
@@ -17,7 +18,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({ currentStep, onSte
                     <button
                         key={step.id}
                         onClick={() => onStepClick(index)}
-                        className={`flex flex-col items-center gap-2 p-2 rounded-lg transition-colors cursor-pointer focus:outline-none ${isCurrent ? 'bg-primary/10' : 'hover:bg-muted'
+                        className={`min-w-[104px] flex-1 flex flex-col items-center gap-2 p-2 rounded-lg transition-colors cursor-pointer focus:outline-none ${isCurrent ? 'bg-primary/10' : 'hover:bg-muted'
                             }`}
                     >
                         <div
@@ -29,7 +30,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({ currentStep, onSte
                             <StepIcon className="w-5 h-5" />
                         </div>
                         <span
-                            className={`text-xs text-center ${isCurrent ? 'font-medium text-primary' : 'text-muted-foreground'
+                            className={`min-h-8 w-full text-xs text-center leading-tight whitespace-normal break-words ${isCurrent ? 'font-medium text-primary' : 'text-muted-foreground'
                                 }`}
                         >
                             {step.label}
@@ -37,6 +38,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({ currentStep, onSte
                     </button>
                 );
             })}
+            </div>
         </div>
     );
 };

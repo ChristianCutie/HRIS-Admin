@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { 
   Settings, 
   NotebookPen,
+    CalendarDays,
 } from 'lucide-react';
 
 
@@ -41,6 +42,13 @@ const SetupManager = () => {
             description: 'Learn about the system and its features',
             icon: NotebookPen,
             path: '/setup/lessons',
+        },
+        {
+            id: 'holidays',
+            title: 'Holidays',
+            description: 'Manage company holidays and important events',
+            icon: CalendarDays,
+            path: '/setup/holidays',
         },
     ];
 

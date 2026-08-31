@@ -97,6 +97,7 @@ export interface SetupData extends CompanyInfo {
     benefitTypes: BenefitType[] | any;
     employmentTypes: EmploymentType[];
     workLocations: WorkLocation[];
+    holidays: HolidayFormData[];
     allowance: Allowance[] | any;
     LoanType: LoanType[];
 }
@@ -150,10 +151,10 @@ export interface WorkLocationFormData {
     isRemote: boolean;
 }
 
-export interface HolidayFormData {
+export interface HolidayFormData extends BaseEntity {
     name: string;
     date: string;
-    type: string;
+    type: 'Regular' | 'Special';
 }
 
 export interface WorkShiftFormData {

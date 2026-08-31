@@ -1575,8 +1575,8 @@ const EmployeeDialog = ({
                                         </div>
                                         <Switch
                                             id="is_interviewer"
-                                            checked={formData.is_interviewer}
-                                            onCheckedChange={(checked) => handleInputChange('is_interviewer', checked)}
+                                            checked={Boolean(formData.is_interviewer)}
+                                            onCheckedChange={(checked) => handleInputChange('is_interviewer', checked ? 1 : 0)}
                                         />
                                     </div>
                                     <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -1588,8 +1588,8 @@ const EmployeeDialog = ({
                                         </div>
                                         <Switch
                                             id="is_regular"
-                                            checked={formData.is_regular}
-                                            onCheckedChange={(checked) => handleInputChange('is_regular', checked)}
+                                            checked={Boolean(formData.is_regular)}
+                                            onCheckedChange={(checked) => handleInputChange('is_regular', checked ? 1 : 0)}
                                         />
                                     </div>
 

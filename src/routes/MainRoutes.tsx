@@ -8,6 +8,7 @@ import AttendanceLeaving from '@/features/attendance-leaving/AttendanceLeaving'
 import SetupManager from '@/features/setup-manager/SetupManager'
 import InitialSystemSetup from '@/features/setup-manager/pages/InitialSystemSetup'
 import LessonSetup from '@/features/setup-manager/pages/LessonSetup'
+import HolidaySetup from '@/features/setup-manager/pages/HolidaySetup'
 import Employees from '@/features/employees/Employees'
 import ChristmasBonus from '@/features/christmas-bonus/ChristmasBonus'
 import RecruitmentJobPostings from '@/features/job-posting/RecruitmentJobPostings'
@@ -48,6 +49,7 @@ const MainRoutes = () => {
             children: [
                 { path: "initial", element: <InitialSystemSetup /> },
                 { path: "lessons", element: <LessonSetup /> },
+                { path: "holidays", element: <HolidaySetup /> },
             ],
         },
     ])
