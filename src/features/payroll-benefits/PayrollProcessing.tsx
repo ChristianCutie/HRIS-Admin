@@ -525,6 +525,8 @@ export function PayrollProcessing() {
         days_worked: showPayslip.days_worked,
         gross_base: showPayslip.gross_base || showPayslip.gross_pay,
         gross_pay: showPayslip.gross_pay,
+        night_diff_pay: showPayslip.night_diff_pay,
+        total_allowances: showPayslip.total_allowances,
         total_deductions: showPayslip.total_deductions,
         net_pay: showPayslip.net_pay,
         generated_at: showPayslip.generated_at,
@@ -2095,14 +2097,24 @@ export function PayrollProcessing() {
                       </span>
                       <span className="font-medium text-green-500">
                         ₱
-                        {(
-                          (parseFloat(
-                            showPayslip.total_allowances?.replace(/,/g, ""),
-                          ) || 0) +
-                          (parseFloat(
-                            showPayslip.night_diff_pay?.replace(/,/g, ""),
-                          ) || 0)
-                        ).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                        {(parseFloat(
+                          showPayslip.total_allowances?.replace(/,/g, ""),
+                        ) || 0).toLocaleString("en-PH", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        Night Differential:
+                      </span>
+                      <span className="font-medium text-green-500">
+                        ₱
+                        {(parseFloat(
+                          showPayslip.night_diff_pay?.replace(/,/g, ""),
+                        ) || 0).toLocaleString("en-PH", {
+                          minimumFractionDigits: 2,
+                        })}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -2145,7 +2157,7 @@ export function PayrollProcessing() {
                         </span>
                       </div>
                       <div className="flex justify-between mt-4">
-                        <span>Night Rate</span>
+                        <span>Night Differential</span>
                         <span className="font-medium">
                           ₱{" "}
                           {showPayslip.night_diff_pay?.toLocaleString("en-PH", {

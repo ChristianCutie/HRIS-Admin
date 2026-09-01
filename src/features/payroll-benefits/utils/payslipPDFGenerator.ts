@@ -9,6 +9,8 @@ export interface PayslipData {
   days_worked: string;
   gross_base: string;
   gross_pay: string;
+  night_diff_pay?: string;
+  total_allowances?: string;
   total_deductions: string;
   net_pay: string;
   generated_at: string;
@@ -225,6 +227,12 @@ export const generatePayslipPDF = async (payslip: PayslipData): Promise<void> =>
                     <td>Basic Salary (${payslip.days_worked} days @ ₱${payslip.daily_rate})</td>
                     <td class="amount">₱${payslip.gross_base}</td>
                   </tr>
+                  ${payslip.night_diff_pay && Number(payslip.night_diff_pay.replace(/,/g, '')) > 0 ? `
+                    <tr>
+                      <td>Night Differential</td>
+                      <td class="amount">₱${payslip.night_diff_pay}</td>
+                    </tr>
+                  ` : ''}
                   ${payslip.allowances && payslip.allowances.length > 0
         ? payslip.allowances.map(allowance => `
                       <tr>
