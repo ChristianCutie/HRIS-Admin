@@ -7,13 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { HolidayFormData, StepComponentProps } from '../setupManagerTypes';
-import { HOLIDAY_TYPES, holidayAPI, type Holiday } from '../../services/holidayApi';
+import { HOLIDAY_COUNTRIES, HOLIDAY_TYPES, holidayAPI, type Holiday, type HolidayCountry } from '../../services/holidayApi';
 
 export const HolidaysEventsStep = ({ setupData, setSetupData }: StepComponentProps) => {
     const [newItem, setNewItem] = useState<Omit<HolidayFormData, 'id'>>({
         name: '',
         date: '',
         type: 'Regular',
+        country: 'PH',
     });
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -28,6 +29,7 @@ export const HolidaysEventsStep = ({ setupData, setSetupData }: StepComponentPro
                     name: holiday.holiday_name,
                     date: holiday.holiday_date.slice(0, 10),
                     type: holiday.holiday_type,
+                    country: holiday.holiday_country || 'PH',
                 })),
         });
     };
@@ -61,8 +63,9 @@ export const HolidaysEventsStep = ({ setupData, setSetupData }: StepComponentPro
                 holiday_date: newItem.date,
                 holiday_name: newItem.name.trim(),
                 holiday_type: newItem.type,
+                holiday_country: newItem.country,
             });
-            setNewItem({ name: '', date: '', type: 'Regular' });
+            setNewItem({ name: '', date: '', type: 'Regular', country: 'PH' });
             await loadHolidays();
             toast.success(`${newItem.type} holiday added to setup`);
         } catch (error: any) {
@@ -114,6 +117,17 @@ export const HolidaysEventsStep = ({ setupData, setSetupData }: StepComponentPro
                             </SelectContent>
                         </Select>
                     </div>
+                    <div className="w-[180px] shrink-0 space-y-2">
+                        <Label>Holiday calendar</Label>
+                        <div className="flex h-10 items-center gap-4 rounded-md border px-3">
+                            {HOLIDAY_COUNTRIES.map((country) => (
+                                <label key={country} className="flex items-center gap-2 text-sm">
+                                    <input type="checkbox" checked={newItem.country === country} onChange={(event) => event.target.checked && setNewItem({ ...newItem, country: country as HolidayCountry })} />
+                                    {country}
+                                </label>
+                            ))}
+                        </div>
+                    </div>
                     <Button type="button" onClick={() => void addItem()} disabled={isSaving}><Plus className="w-4 h-4" />Add</Button>
                     </div>
                 </div>
@@ -124,7 +138,7 @@ export const HolidaysEventsStep = ({ setupData, setSetupData }: StepComponentPro
                             <div key={item.id} className="flex items-center justify-between gap-4 p-4">
                                 <div className="min-w-0">
                                     <p className="font-medium truncate">{item.name}</p>
-                                    <p className="text-sm text-muted-foreground">{new Date(`${item.date}T00:00:00`).toLocaleDateString()} - {item.type} Holiday</p>
+                                    <p className="text-sm text-muted-foreground">{new Date(`${item.date}T00:00:00`).toLocaleDateString()} - {item.country} {item.type} Holiday</p>
                                 </div>
                                 <Button type="button" variant="ghost" size="icon" onClick={() => void removeItem(item.id)} disabled={isSaving} aria-label={`Remove ${item.name}`}><Trash2 className="w-4 h-4" /></Button>
                             </div>

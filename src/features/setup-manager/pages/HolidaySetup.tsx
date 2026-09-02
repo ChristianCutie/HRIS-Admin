@@ -1,21 +1,26 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarDays, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Archive, CalendarDays, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { HOLIDAY_TYPES, holidayAPI, type Holiday, type HolidayPayload, type HolidayType } from '../services/holidayApi';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { HOLIDAY_COUNTRIES, HOLIDAY_TYPES, holidayAPI, type Holiday, type HolidayCountry, type HolidayPayload, type HolidayType } from '../services/holidayApi';
 
-const emptyForm: HolidayPayload = { holiday_date: '', holiday_name: '', holiday_type: 'Regular' };
+const emptyForm: HolidayPayload = { holiday_date: '', holiday_name: '', holiday_type: 'Regular', holiday_country: 'PH' };
 
 const HolidaySetup = () => {
     const navigate = useNavigate();
     const [holidays, setHolidays] = useState<Holiday[]>([]);
+    const [archivedHolidays, setArchivedHolidays] = useState<Holiday[]>([]);
+    const [isArchivedOpen, setIsArchivedOpen] = useState(false);
     const [form, setForm] = useState<HolidayPayload>(emptyForm);
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [holidayToArchive, setHolidayToArchive] = useState<Holiday | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -23,7 +28,9 @@ const HolidaySetup = () => {
         try {
             const response = await holidayAPI.getAll();
             const data = response.data.data;
-            setHolidays(Array.isArray(data) ? data.filter((holiday) => !holiday.is_archived) : []);
+            const loadedHolidays = Array.isArray(data) ? data : [];
+            setHolidays(loadedHolidays.filter((holiday) => !holiday.is_archived));
+            setArchivedHolidays(loadedHolidays.filter((holiday) => Boolean(holiday.is_archived)));
         } catch (error) {
             console.error('Failed to load holidays:', error);
             toast.error('Failed to load holidays');
@@ -72,24 +79,33 @@ const HolidaySetup = () => {
             holiday_date: holiday.holiday_date.slice(0, 10),
             holiday_name: holiday.holiday_name,
             holiday_type: holiday.holiday_type,
+            holiday_country: holiday.holiday_country || 'PH',
         });
     };
 
-    const archiveHoliday = async (holiday: Holiday) => {
-        if (!window.confirm(`Archive ${holiday.holiday_name}?`)) return;
+    const archiveHoliday = async () => {
+        if (!holidayToArchive) return;
 
         try {
-            await holidayAPI.archive(holiday.id);
+            setIsSaving(true);
+            await holidayAPI.archive(holidayToArchive.id);
             toast.success('Holiday archived successfully');
+            setHolidayToArchive(null);
             await loadHolidays();
         } catch (error: any) {
             toast.error(error.response?.data?.message || 'Failed to archive holiday');
+        } finally {
+            setIsSaving(false);
         }
     };
 
     const cancelEdit = () => {
         setEditingId(null);
         setForm(emptyForm);
+    };
+
+    const selectCountry = (country: HolidayCountry, checked: boolean) => {
+        if (checked) updateForm('holiday_country', country);
     };
 
     return (
@@ -106,10 +122,16 @@ const HolidaySetup = () => {
 
             <div className="p-6 mx-auto space-y-6">
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-2">
-                        <CalendarDays className="w-8 h-8" />
-                        Holidays &amp; Events
-                    </h1>
+                    <div className="flex items-start justify-between gap-4">
+                        <h1 className="text-3xl font-bold flex items-center gap-2">
+                            <CalendarDays className="w-8 h-8" />
+                            Holidays &amp; Events
+                        </h1>
+                        <Button type="button" variant="outline" onClick={() => setIsArchivedOpen(true)}>
+                            <Archive className="w-4 h-4" />
+                            Archived ({archivedHolidays.length})
+                        </Button>
+                    </div>
                     <p className="text-muted-foreground mt-2">Add company holidays and important events to your HRIS calendar.</p>
                 </div>
 
@@ -138,6 +160,17 @@ const HolidaySetup = () => {
                                     </SelectContent>
                                 </Select>
                             </div>
+                            <div className="w-[180px] shrink-0 space-y-2">
+                                <Label>Holiday calendar</Label>
+                                <div className="flex h-10 items-center gap-4 rounded-md border px-3">
+                                    {HOLIDAY_COUNTRIES.map((country) => (
+                                        <label key={country} className="flex items-center gap-2 text-sm">
+                                            <Checkbox checked={form.holiday_country === country} onCheckedChange={(checked) => selectCountry(country, checked === true)} />
+                                            {country}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
                             <div className="flex gap-2">
                                 <Button type="button" onClick={() => void saveHoliday()} disabled={isSaving}>
                                     {editingId === null ? <Plus className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
@@ -154,11 +187,11 @@ const HolidaySetup = () => {
                                     <div key={holiday.id} className="flex items-center justify-between gap-4 p-4">
                                         <div className="min-w-0">
                                             <p className="font-medium truncate">{holiday.holiday_name}</p>
-                                            <p className="text-sm text-muted-foreground">{new Date(`${holiday.holiday_date.slice(0, 10)}T00:00:00`).toLocaleDateString()} - {holiday.holiday_type === 'Regular' ? 'Regular Holiday' : 'Special Holiday'}</p>
+                                            <p className="text-sm text-muted-foreground">{new Date(`${holiday.holiday_date.slice(0, 10)}T00:00:00`).toLocaleDateString()} - {holiday.holiday_country} {holiday.holiday_type === 'Regular' ? 'Regular Holiday' : 'Special Holiday'}</p>
                                         </div>
                                         <div className="flex shrink-0 gap-1">
                                             <Button type="button" variant="ghost" size="icon" onClick={() => editHoliday(holiday)} aria-label={`Edit ${holiday.holiday_name}`}><Pencil className="w-4 h-4" /></Button>
-                                            <Button type="button" variant="ghost" size="icon" onClick={() => void archiveHoliday(holiday)} aria-label={`Archive ${holiday.holiday_name}`}><Trash2 className="w-4 h-4" /></Button>
+                                            <Button type="button" variant="ghost" size="icon" onClick={() => setHolidayToArchive(holiday)} aria-label={`Archive ${holiday.holiday_name}`}><Trash2 className="w-4 h-4" /></Button>
                                         </div>
                                     </div>
                                 ))}
@@ -167,6 +200,44 @@ const HolidaySetup = () => {
                     </CardContent>
                 </Card>
             </div>
+
+                    <Dialog open={holidayToArchive !== null} onOpenChange={(open) => !open && setHolidayToArchive(null)}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Archive holiday?</DialogTitle>
+                                <DialogDescription>
+                                    Archive {holidayToArchive?.holiday_name}? It will be removed from the active holiday list.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => setHolidayToArchive(null)} disabled={isSaving}>Cancel</Button>
+                                <Button type="button" variant="destructive" onClick={() => void archiveHoliday()} disabled={isSaving}>Archive</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
+                    <Dialog open={isArchivedOpen} onOpenChange={setIsArchivedOpen}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Archived holidays</DialogTitle>
+                                <DialogDescription>Previously archived holidays are shown here.</DialogDescription>
+                            </DialogHeader>
+                            {archivedHolidays.length > 0 ? (
+                                <div className="max-h-80 divide-y overflow-y-auto rounded-md border">
+                                    {archivedHolidays.map((holiday) => (
+                                        <div key={holiday.id} className="p-4">
+                                            <p className="font-medium">{holiday.holiday_name}</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {new Date(`${holiday.holiday_date.slice(0, 10)}T00:00:00`).toLocaleDateString()} - {holiday.holiday_country || 'PH'} {holiday.holiday_type} Holiday
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">No archived holidays.</p>
+                            )}
+                        </DialogContent>
+                    </Dialog>
         </div>
     );
 };
