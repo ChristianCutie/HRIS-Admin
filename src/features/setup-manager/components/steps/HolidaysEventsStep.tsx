@@ -1,23 +1,34 @@
 import { useEffect, useState } from 'react';
-import { CalendarDays, Plus, Trash2 } from 'lucide-react';
+import axios from 'axios';
+import { CalendarDays, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { HolidayTypeManager } from '../HolidayTypeManager';
 import type { HolidayFormData, StepComponentProps } from '../setupManagerTypes';
-import { HOLIDAY_COUNTRIES, HOLIDAY_TYPES, holidayAPI, type Holiday, type HolidayCountry } from '../../services/holidayApi';
+import { holidayAPI, type Holiday, type HolidayTypeRecord } from '../../services/holidayApi';
+
+const formatHolidayDate = (dateValue: string) => {
+    const [year, month, day] = dateValue.slice(0, 10).split('-').map(Number);
+    return new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(year, month - 1, day)));
+};
 
 export const HolidaysEventsStep = ({ setupData, setSetupData }: StepComponentProps) => {
     const [newItem, setNewItem] = useState<Omit<HolidayFormData, 'id'>>({
         name: '',
         date: '',
-        type: 'Regular',
-        country: 'PH',
+        type: '',
+        holidayTypeId: 0,
     });
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [holidayTypes, setHolidayTypes] = useState<HolidayTypeRecord[]>([]);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [holidayToArchive, setHolidayToArchive] = useState<HolidayFormData | null>(null);
 
     const applyBackendHolidays = (holidays: Holiday[]) => {
         setSetupData({
@@ -28,8 +39,8 @@ export const HolidaysEventsStep = ({ setupData, setSetupData }: StepComponentPro
                     id: holiday.id.toString(),
                     name: holiday.holiday_name,
                     date: holiday.holiday_date.slice(0, 10),
-                    type: holiday.holiday_type,
-                    country: holiday.holiday_country || 'PH',
+                    type: typeof holiday.holiday_type === 'object' && holiday.holiday_type !== null ? holiday.holiday_type.type_name : holiday.holiday_type || '',
+                    holidayTypeId: holiday.holiday_type_id,
                 })),
         });
     };
@@ -49,46 +60,67 @@ export const HolidaysEventsStep = ({ setupData, setSetupData }: StepComponentPro
 
     useEffect(() => {
         void loadHolidays();
+        // The setup step loads the existing holidays once when it mounts.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const addItem = async () => {
-        if (!newItem.name.trim() || !newItem.date) {
-            toast.error('Please enter a name and date');
+    const saveItem = async () => {
+        if (!newItem.name.trim() || !newItem.date || !newItem.holidayTypeId) {
+            toast.error('Please enter a name, date, and holiday type');
             return;
         }
 
         try {
             setIsSaving(true);
-            await holidayAPI.create({
+            const payload = {
                 holiday_date: newItem.date,
                 holiday_name: newItem.name.trim(),
-                holiday_type: newItem.type,
-                holiday_country: newItem.country,
-            });
-            setNewItem({ name: '', date: '', type: 'Regular', country: 'PH' });
+                holiday_type_id: newItem.holidayTypeId,
+            };
+            if (editingId === null) await holidayAPI.create(payload);
+            else await holidayAPI.update(Number(editingId), payload);
+            setNewItem({ name: '', date: '', type: holidayTypes[0]?.type_name ?? '', holidayTypeId: holidayTypes[0]?.id ?? 0 });
+            setEditingId(null);
             await loadHolidays();
-            toast.success(`${newItem.type} holiday added to setup`);
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to save holiday');
+            toast.success(editingId === null ? 'Holiday added successfully' : 'Holiday updated successfully');
+        } catch (error: unknown) {
+            toast.error(axios.isAxiosError(error) ? error.response?.data?.message || 'Failed to save holiday' : 'Failed to save holiday');
         } finally {
             setIsSaving(false);
         }
     };
 
-    const removeItem = async (id: string) => {
+    const removeItem = async () => {
+        if (!holidayToArchive) return;
         try {
             setIsSaving(true);
-            await holidayAPI.archive(Number(id));
+            await holidayAPI.archive(Number(holidayToArchive.id));
+            setHolidayToArchive(null);
             await loadHolidays();
             toast.success('Holiday archived successfully');
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to archive holiday');
+        } catch (error: unknown) {
+            toast.error(axios.isAxiosError(error) ? error.response?.data?.message || 'Failed to archive holiday' : 'Failed to archive holiday');
         } finally {
             setIsSaving(false);
         }
+    };
+
+    const editItem = (item: HolidayFormData) => {
+        setEditingId(item.id);
+        setNewItem({ name: item.name, date: item.date, type: item.type, holidayTypeId: item.holidayTypeId });
+    };
+
+    const cancelEdit = () => {
+        setEditingId(null);
+        setNewItem({ name: '', date: '', type: holidayTypes[0]?.type_name ?? '', holidayTypeId: holidayTypes[0]?.id ?? 0 });
     };
 
     return (
+        <>
+        <HolidayTypeManager onTypesChanged={(loadedTypes) => {
+            setHolidayTypes(loadedTypes);
+            setNewItem((current) => current.holidayTypeId ? current : { ...current, holidayTypeId: loadedTypes[0]?.id ?? 0, type: loadedTypes[0]?.type_name ?? '' });
+        }} />
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -110,25 +142,17 @@ export const HolidaysEventsStep = ({ setupData, setSetupData }: StepComponentPro
                     </div>
                     <div className="w-[160px] shrink-0 space-y-2">
                         <Label>Type</Label>
-                        <Select value={newItem.type} onValueChange={(value: HolidayFormData['type']) => setNewItem({ ...newItem, type: value })}>
+                        <Select value={newItem.holidayTypeId ? String(newItem.holidayTypeId) : undefined} onValueChange={(value) => { const holidayType = holidayTypes.find((item) => item.id === Number(value)); setNewItem({ ...newItem, holidayTypeId: Number(value), type: holidayType?.type_name ?? '' }); }}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-                                {HOLIDAY_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                                {holidayTypes.map((holidayType) => <SelectItem key={holidayType.id} value={String(holidayType.id)}>{holidayType.type_name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
-                    <div className="w-[180px] shrink-0 space-y-2">
-                        <Label>Holiday calendar</Label>
-                        <div className="flex h-10 items-center gap-4 rounded-md border px-3">
-                            {HOLIDAY_COUNTRIES.map((country) => (
-                                <label key={country} className="flex items-center gap-2 text-sm">
-                                    <input type="checkbox" checked={newItem.country === country} onChange={(event) => event.target.checked && setNewItem({ ...newItem, country: country as HolidayCountry })} />
-                                    {country}
-                                </label>
-                            ))}
-                        </div>
+                    <div className="flex gap-2">
+                        <Button type="button" onClick={() => void saveItem()} disabled={isSaving || holidayTypes.length === 0}>{editingId === null ? <Plus className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}{editingId === null ? 'Add' : 'Save'}</Button>
+                        {editingId !== null && <Button type="button" variant="outline" size="icon" onClick={cancelEdit} aria-label="Cancel editing"><X className="w-4 h-4" /></Button>}
                     </div>
-                    <Button type="button" onClick={() => void addItem()} disabled={isSaving}><Plus className="w-4 h-4" />Add</Button>
                     </div>
                 </div>
 
@@ -138,14 +162,24 @@ export const HolidaysEventsStep = ({ setupData, setSetupData }: StepComponentPro
                             <div key={item.id} className="flex items-center justify-between gap-4 p-4">
                                 <div className="min-w-0">
                                     <p className="font-medium truncate">{item.name}</p>
-                                    <p className="text-sm text-muted-foreground">{new Date(`${item.date}T00:00:00`).toLocaleDateString()} - {item.country} {item.type} Holiday</p>
+                                    <p className="text-sm text-muted-foreground">{formatHolidayDate(item.date)} - {item.type} Holiday</p>
                                 </div>
-                                <Button type="button" variant="ghost" size="icon" onClick={() => void removeItem(item.id)} disabled={isSaving} aria-label={`Remove ${item.name}`}><Trash2 className="w-4 h-4" /></Button>
+                                <div className="flex shrink-0 gap-1">
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => editItem(item)} aria-label={`Edit ${item.name}`}><Pencil className="w-4 h-4" /></Button>
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => setHolidayToArchive(item)} disabled={isSaving} aria-label={`Archive ${item.name}`}><Trash2 className="w-4 h-4" /></Button>
+                                </div>
                             </div>
                         ))}
                     </div>
                 ) : <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">No holidays or events added yet.</p>}
             </CardContent>
         </Card>
+        <Dialog open={holidayToArchive !== null} onOpenChange={(open) => !open && setHolidayToArchive(null)}>
+            <DialogContent>
+                <DialogHeader><DialogTitle>Archive holiday?</DialogTitle><DialogDescription>Archive {holidayToArchive?.name}? It will be removed from the active list.</DialogDescription></DialogHeader>
+                <DialogFooter><Button type="button" variant="outline" onClick={() => setHolidayToArchive(null)} disabled={isSaving}>Cancel</Button><Button type="button" variant="destructive" onClick={() => void removeItem()} disabled={isSaving}>Archive</Button></DialogFooter>
+            </DialogContent>
+        </Dialog>
+        </>
     );
 };

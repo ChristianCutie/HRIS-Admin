@@ -154,8 +154,8 @@ export interface WorkLocationFormData {
 export interface HolidayFormData extends BaseEntity {
     name: string;
     date: string;
-    type: 'Regular' | 'Special';
-    country: 'US' | 'PH';
+    type: string;
+    holidayTypeId: number;
 }
 
 export interface WorkShiftFormData {
