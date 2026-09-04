@@ -111,7 +111,7 @@ const Announcement = () => {
       } else {
         setError("Failed to load announcements");
       }
-    } catch (err) {
+    } catch {
       setError("Network error");
     } finally {
       setLoading(false);
@@ -391,11 +391,11 @@ const Announcement = () => {
 
       {/* Detail Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
+        <DialogContent className="max-w-2xl w-[min(90vw,42rem)] max-h-[80vh] overflow-hidden p-0">
           {selectedAnnouncement && (
-            <ScrollArea className="w-full h-full">
+            <ScrollArea className="h-[80vh] w-full">
               <div className="p-6">
-                <DialogHeader className="mb-6">
+                <DialogHeader className="mb-6 pr-8">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-3">
@@ -416,7 +416,7 @@ const Announcement = () => {
 
                 <div className="space-y-6">
                   {/* Author and Date */}
-                  <div className="flex items-center justify-between text-sm text-slate-600 bg-slate-50 p-4 rounded-lg">
+                  <div className="flex items-center justify-between text-sm text-slate-600 bg-slate-50 p-4 rounded-lg gap-4">
                     <div>
                       <p className="font-semibold text-slate-900">
                         {selectedAnnouncement.user?.first_name ?? "Unknown"}{" "}
@@ -447,7 +447,7 @@ const Announcement = () => {
                     <h3 className="text-sm font-semibold text-slate-600 mb-3">
                       Details
                     </h3>
-                    <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
+                    <p className="text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
                       {selectedAnnouncement.content}
                     </p>
                   </div>
